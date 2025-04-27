@@ -1,4 +1,4 @@
-module ebitengine-mcp
+module github.com/sedyh/ebitengine-mcp
 
 go 1.23.1
 
