@@ -17,11 +17,6 @@ import (
 	"github.com/mark3labs/mcp-go/mcp"
 )
 
-const (
-	name    = "ebitengine-mcp-recorder-client"
-	version = "1.0.0"
-)
-
 func main() {
 	var dir string
 	flag.StringVar(&dir, "client", "./examples/record", "golang client to run")

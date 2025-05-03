@@ -3,6 +3,7 @@ package cli
 import (
 	"errors"
 	"fmt"
+	"io"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -11,62 +12,53 @@ import (
 )
 
 const (
-	DefaultFlag = "mcp"
-	DefaultBin  = "ebitengine-mcp-run"
+	FlagURL = "emcp-url"
+	FlagPub = "emcp-pub"
+	FlagSub = "emcp-sub"
+	FlagID  = "emcp-id"
+	BinName = "emcp-bin"
 )
 
-func Run(id, target string) (e error) {
+func Run(target, url, pub, sub, id string) (e error) {
 	info, err := os.Stat(target)
 	if err != nil {
 		return fmt.Errorf("stat %s: %w", target, err)
 	}
 
-	pkg := filepath.Dir(target)
-	if info.IsDir() {
-		pkg = target
+	pkg := target
+	if !info.IsDir() {
+		pkg = filepath.Dir(target)
 	}
 
-	tmp, err := os.CreateTemp("", fmt.Sprintf("%s-%s-*", DefaultBin, id))
+	tmp, err := os.CreateTemp("", fmt.Sprintf("%s-%s", BinName, id))
 	if err != nil {
 		return fmt.Errorf("create temp file: %w", err)
 	}
-	defer errs.Closer(&e, tmp)
 
 	out := tmp.Name()
 	defer os.Remove(out)
+	defer errs.Closer(&e, tmp)
 
-	gobin, err := Compiler()
+	bin, err := Compiler()
 	if err != nil {
 		return fmt.Errorf("find compiler: %w", err)
 	}
 
-	old, err := os.Getwd()
-	if err != nil {
-		return fmt.Errorf("get working dir: %w", err)
-	}
-
-	if err := os.Chdir(pkg); err != nil {
-		return fmt.Errorf("chdir to %s: %w", pkg, err)
-	}
-
-	build := exec.Command(gobin, "build", "-o", out, ".")
-	build.Stdout = os.Stdout
-	build.Stderr = os.Stderr
-
-	if err := build.Run(); err != nil {
-		os.Chdir(old)
-		return fmt.Errorf("build project: %w", err)
-	}
-
-	if err := os.Chdir(old); err != nil {
-		return fmt.Errorf("restore dir to %s: %w", old, err)
+	if err := Build(pkg, bin, out); err != nil {
+		return err
 	}
 
 	if _, err := os.Stat(out); os.IsNotExist(err) {
 		return fmt.Errorf("output file not found: %w", err)
 	}
 
-	run := exec.Command(out, "-"+DefaultFlag, id)
+	run := exec.Command(
+		out,
+		"-"+FlagURL, url,
+		"-"+FlagPub, pub,
+		"-"+FlagSub, sub,
+		"-"+FlagID, id,
+	)
 	run.Stdin = os.Stdin
 	run.Stdout = os.Stdout
 	run.Stderr = os.Stderr
@@ -81,6 +73,32 @@ func Run(id, target string) (e error) {
 	}
 
 	return nil
+}
+
+func Build(dir, bin, out string) (e error) {
+	old, err := os.Getwd()
+	if err != nil {
+		return fmt.Errorf("get working dir: %w", err)
+	}
+	if err := os.Chdir(dir); err != nil {
+		return err
+	}
+	defer errs.Closer(&e, Restore(old))
+
+	build := exec.Command(bin, "build", "-o", out, ".")
+	build.Stdout = os.Stdout
+	build.Stderr = os.Stderr
+	if err := build.Run(); err != nil {
+		return fmt.Errorf("build project: %w", err)
+	}
+
+	return nil
+}
+
+func Restore(dir string) io.Closer {
+	return errs.CloserFunc(func() error {
+		return os.Chdir(dir)
+	})
 }
 
 func Compiler() (string, error) {

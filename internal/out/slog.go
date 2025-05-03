@@ -26,6 +26,8 @@ func Setup(level slog.Level) {
 	))
 }
 
+const DefaultLevel = slog.LevelDebug
+
 func Level(s string) slog.Level {
 	switch s {
 	case "debug":

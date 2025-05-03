@@ -6,6 +6,12 @@ import (
 	"os"
 )
 
+type CloserFunc func() error
+
+func (f CloserFunc) Close() error {
+	return f()
+}
+
 func Closer(dest *error, c io.Closer) {
 	if c == nil {
 		return
