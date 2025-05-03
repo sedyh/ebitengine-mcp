@@ -17,6 +17,7 @@ require (
 	github.com/ebitengine/purego v0.8.0 // indirect
 	github.com/jcuga/golongpoll v1.3.1
 	github.com/jezek/xgb v1.1.1 // indirect
+	github.com/lithammer/shortuuid v3.0.0+incompatible
 	github.com/mark3labs/mcp-go v0.23.1
 	github.com/phsym/console-slog v0.3.1
 	golang.org/x/sync v0.8.0 // indirect

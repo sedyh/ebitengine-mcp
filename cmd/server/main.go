@@ -4,15 +4,16 @@ import (
 	"context"
 	"errors"
 	"flag"
+	"fmt"
 	"log/slog"
-	"net/http"
 	"os"
 	"os/signal"
 	"time"
 
-	"github.com/jcuga/golongpoll"
+	"github.com/lithammer/shortuuid"
 	"github.com/mark3labs/mcp-go/mcp"
 	"github.com/mark3labs/mcp-go/server"
+	"github.com/sedyh/ebitengine-mcp/internal/event"
 	"github.com/sedyh/ebitengine-mcp/internal/out"
 )
 
@@ -40,21 +41,15 @@ func main() {
 	// Library communication
 
 	slog.Info("started", "url", *url, "pub", *pub, "sub", *sub)
-	m, err := golongpoll.StartLongpoll(golongpoll.Options{})
+	poll, err := event.NewServer(*url, *pub, *sub)
 	if err != nil {
-		slog.Error("polling", "err", err)
+		slog.Error("create-event-server", "err", err)
 		os.Exit(1)
 	}
 
-	mux := http.NewServeMux()
-	mux.HandleFunc(*sub, m.SubscriptionHandler)
-	mux.HandleFunc(*pub, m.PublishHandler)
-	poll := &http.Server{Addr: *url, Handler: mux}
-
 	go func() {
-		err := poll.ListenAndServe()
-		if err != nil && !errors.Is(err, http.ErrServerClosed) {
-			slog.Error("listening", "err", err)
+		if err := poll.Start(ctx); err != nil {
+			slog.Error("poll-server", "err", err)
 			os.Exit(1)
 		}
 	}()
@@ -65,19 +60,28 @@ func main() {
 	mod.AddTool(
 		mcp.NewTool(
 			"record",
-			mcp.WithDescription("record n frames every m milliseconds and exit"),
+			mcp.WithDescription("record 1-5 frames with 100-1000 ms delay between them"),
+			mcp.WithString(
+				"target",
+				mcp.Required(),
+				mcp.Description("any type of path to main go package of the app, like: ./cmd/app, ../example/main.go, app/client"),
+			),
 			mcp.WithNumber(
 				"frames",
 				mcp.Required(),
-				mcp.Description("number of frames to record"),
+				mcp.Description("number of frames to record, 1-5"),
 			),
 			mcp.WithNumber(
 				"delay",
 				mcp.Required(),
-				mcp.Description("delay in milliseconds between frames"),
+				mcp.Description("delay in milliseconds between frames, 100-1000"),
 			),
 		),
 		func(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+			target, ok := request.Params.Arguments["target"].(string)
+			if !ok {
+				return nil, errors.New("target must be a string")
+			}
 			frames, ok := request.Params.Arguments["frames"].(float64)
 			if !ok {
 				return nil, errors.New("frames must be a number")
@@ -87,8 +91,35 @@ func main() {
 				return nil, errors.New("delay must be a number")
 			}
 
-			_, _ = int(frames), time.Duration(delay)*time.Millisecond
+			id := shortuuid.New()
+			offset := time.Now().Add(-2 * time.Second)
+
+			client, err := event.NewClient[*event.RecordResponse](*url, *pub, *sub, id)
+			if err != nil {
+				return nil, fmt.Errorf("create client: %w", err)
+			}
+
+			responses := client.Start(offset)
+			defer client.Stop()
+
+			if err := event.Publish(poll, id, &event.RecordRequest{
+				Target: target,
+				Frames: int(frames),
+				Delay:  time.Duration(delay) * time.Millisecond,
+			}); err != nil {
+				return nil, fmt.Errorf("publish event: %w", err)
+			}
+
+			res := <-responses
+			if res.Err != nil {
+				return mcp.NewToolResultErrorFromErr("fail to record", res.Err), nil
+			}
+
 			call := &mcp.CallToolResult{}
+			for _, png := range res.Images {
+				content := mcp.NewImageContent(png, "image/png")
+				call.Content = append(call.Content, content)
+			}
 
 			return call, nil
 		})
@@ -98,7 +129,7 @@ func main() {
 		s.SetErrorLogger(out.DefaultLog("serving"))
 		err := s.Listen(ctx, os.Stdin, os.Stdout)
 		if err != nil && !errors.Is(err, context.Canceled) {
-			slog.Error("serving", "err", err)
+			slog.Error("mcp-server", "err", err)
 			os.Exit(1)
 		}
 	}()
@@ -109,10 +140,10 @@ func main() {
 	ctx, cancel = context.WithTimeout(context.Background(), 3*time.Second)
 	defer cancel()
 
-	if err := poll.Shutdown(ctx); err != nil {
-		slog.Error("shutdown", "err", err)
+	if err := poll.Stop(ctx); err != nil {
+		slog.Error("poll-server", "err", err)
 		os.Exit(1)
 	}
 
-	slog.Info("stopped")
+	slog.Info("stopped", "graceful", !out.Done(ctx))
 }

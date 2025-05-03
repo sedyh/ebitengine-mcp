@@ -100,3 +100,12 @@ func (r *prefixed) Write(p []byte) (n int, err error) {
 
 	return len(p), nil
 }
+
+func Done(ctx context.Context) bool {
+	select {
+	case <-ctx.Done():
+		return true
+	default:
+		return false
+	}
+}
