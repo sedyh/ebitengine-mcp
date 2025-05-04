@@ -1,7 +1,7 @@
 package cli
 
 import (
-	"errors"
+	"context"
 	"fmt"
 	"io"
 	"os"
@@ -19,7 +19,7 @@ const (
 	BinName = "emcp-bin"
 )
 
-func Run(target, url, pub, sub, id string) (e error) {
+func Run(ctx context.Context, target, url, pub, sub, id string) (e error) {
 	info, err := os.Stat(target)
 	if err != nil {
 		return fmt.Errorf("stat %s: %w", target, err)
@@ -44,16 +44,16 @@ func Run(target, url, pub, sub, id string) (e error) {
 		return fmt.Errorf("find compiler: %w", err)
 	}
 
-	if err := Build(pkg, bin, out); err != nil {
-		return err
+	if err := Build(ctx, pkg, bin, out); err != nil {
+		return fmt.Errorf("build: %w", err)
 	}
 
 	if _, err := os.Stat(out); os.IsNotExist(err) {
 		return fmt.Errorf("output file not found: %w", err)
 	}
 
-	run := exec.Command(
-		out,
+	run := exec.CommandContext(
+		ctx, out,
 		"-"+FlagURL, url,
 		"-"+FlagPub, pub,
 		"-"+FlagSub, sub,
@@ -65,17 +65,16 @@ func Run(target, url, pub, sub, id string) (e error) {
 	run.Env = os.Environ()
 
 	if err := run.Run(); err != nil {
-		var ex *exec.ExitError
-		if errors.As(err, &ex) {
-			os.Exit(ex.ExitCode())
+		if e := ctx.Err(); e != nil {
+			err = fmt.Errorf("run: %w: %w", e, err)
 		}
-		return fmt.Errorf("run program: %w", err)
+		return err
 	}
 
 	return nil
 }
 
-func Build(dir, bin, out string) (e error) {
+func Build(ctx context.Context, dir, bin, out string) (e error) {
 	old, err := os.Getwd()
 	if err != nil {
 		return fmt.Errorf("get working dir: %w", err)
@@ -85,11 +84,14 @@ func Build(dir, bin, out string) (e error) {
 	}
 	defer errs.Closer(&e, Restore(old))
 
-	build := exec.Command(bin, "build", "-o", out, ".")
+	build := exec.CommandContext(ctx, bin, "build", "-o", out, ".")
 	build.Stdout = os.Stdout
 	build.Stderr = os.Stderr
 	if err := build.Run(); err != nil {
-		return fmt.Errorf("build project: %w", err)
+		if e := ctx.Err(); e != nil {
+			err = fmt.Errorf("%w: %w", e, err)
+		}
+		return err
 	}
 
 	return nil

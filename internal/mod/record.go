@@ -9,6 +9,7 @@ import (
 	"github.com/lithammer/shortuuid"
 	"github.com/mark3labs/mcp-go/mcp"
 	"github.com/mark3labs/mcp-go/server"
+	"github.com/sedyh/ebitengine-mcp/internal/cli"
 	"github.com/sedyh/ebitengine-mcp/internal/event"
 )
 
@@ -70,7 +71,7 @@ func (r *RecordTool) Handle(ctx context.Context, request mcp.CallToolRequest) (*
 		return nil, errors.New("delay must be a number")
 	}
 
-	ctx, cancel := context.WithTimeout(ctx, 10*time.Second)
+	ctx, cancel := context.WithTimeout(ctx, 30*time.Second)
 	defer cancel()
 
 	res := r.Call(ctx, &event.RecordRequest{
@@ -93,6 +94,7 @@ func (r *RecordTool) Handle(ctx context.Context, request mcp.CallToolRequest) (*
 
 func (r *RecordTool) Call(ctx context.Context, req *event.RecordRequest) (res *event.RecordResponse) {
 	id := shortuuid.New()
+	go cli.Run(ctx, req.Target, r.url, r.pub, r.sub, id)
 
 	responser, err := event.NewClient[*event.RecordResponse](r.url, r.pub, r.sub, id)
 	if err != nil {

@@ -3,6 +3,8 @@ package main
 import (
 	"flag"
 	"log/slog"
+	"os"
+	"time"
 
 	"github.com/sedyh/ebitengine-mcp/internal/cli"
 	"github.com/sedyh/ebitengine-mcp/internal/out"
@@ -17,5 +19,8 @@ func main() {
 
 	out.Setup(out.DefaultLevel)
 
-	slog.Info("bin", "url", *url, "pub", *pub, "sub", *sub, "id", *id)
+	slog.Info("bin started", "url", *url, "pub", *pub, "sub", *sub, "id", *id)
+	<-time.After(1 * time.Second)
+	os.Exit(1)
+	slog.Info("bin stopped")
 }
