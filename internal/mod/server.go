@@ -12,7 +12,7 @@ import (
 
 const (
 	Name    = "ebitengine-mcp"
-	Version = "1.0.0"
+	Version = "1.1.0"
 )
 
 type Server struct {

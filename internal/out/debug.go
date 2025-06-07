@@ -59,13 +59,18 @@ func (h *deb) WithGroup(name string) slog.Handler {
 	return &deb{handler: h.handler.WithGroup(name)}
 }
 
-func Add(log string) string {
+func Add(log string) {
+	if !debug {
+		return
+	}
 	f, _ := os.OpenFile(path, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
 	defer f.Close()
 	_, _ = f.WriteString(log + "\n")
-	return path
 }
 
 func Rem() {
+	if !debug {
+		return
+	}
 	_ = os.Remove(path)
 }

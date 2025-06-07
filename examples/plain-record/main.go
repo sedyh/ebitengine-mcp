@@ -13,6 +13,7 @@ import (
 func main() {
 	log.SetFlags(log.Ltime)
 	ebiten.SetWindowSize(800, 600)
+	ebiten.SetWindowResizingMode(ebiten.WindowResizingModeEnabled)
 	if err := ebiten.RunGame(mcp.Wrap(NewGame())); err != nil {
 		log.Fatal(err)
 	}

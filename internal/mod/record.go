@@ -48,7 +48,7 @@ func (r *RecordTool) Tool() mcp.Tool {
 		mcp.WithNumber(
 			"frames",
 			mcp.Required(),
-			mcp.Description("number of frames to record, 1-5"),
+			mcp.Description("number of frames to record, 1-5, use 1 frame unless you need to check the sequence"),
 		),
 		mcp.WithNumber(
 			"delay",

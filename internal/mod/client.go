@@ -2,6 +2,9 @@ package mod
 
 import (
 	"context"
+	"encoding/base64"
+	"log/slog"
+	"os"
 
 	"github.com/mark3labs/mcp-go/client"
 	"github.com/mark3labs/mcp-go/mcp"
@@ -72,7 +75,17 @@ func (c *Client) Record(
 
 	for _, content := range res.Content {
 		if img, ok := mcp.AsImageContent(content); ok {
-			hashes = append(hashes, out.Short(img.Data))
+			hash := out.Short(img.Data)
+			data, err := base64.StdEncoding.DecodeString(img.Data)
+			if err != nil {
+				slog.Error("decode image", "hash", hash, "err", err)
+				continue
+			}
+			if err := os.WriteFile(hash+".png", data, 0644); err != nil {
+				slog.Error("write image", "hash", hash, "err", err)
+				continue
+			}
+			hashes = append(hashes, hash)
 		}
 		if txt, ok := mcp.AsTextContent(content); ok {
 			logs = append(logs, txt.Text)

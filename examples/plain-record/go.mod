@@ -1,8 +1,6 @@
-module record
+module plain-record
 
-go 1.23.1
-
-replace github.com/sedyh/ebitengine-mcp => ../../
+go 1.24
 
 require (
 	github.com/hajimehoshi/ebiten/v2 v2.8.8

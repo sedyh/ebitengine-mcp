@@ -71,6 +71,11 @@ Ask your agent to debug something in your game, you can use `example/record` as 
 #### Record
 - Capture N frames with M delay in milliseconds.
 
+### Special cases
+
+- ✅ **DrawFinalScreen**
+- ❌ **LayoutF**
+
 ### Supported plugins and editors
 
 [Feature support matrix: check tools tab.](https://modelcontextprotocol.io/clients)
@@ -94,8 +99,7 @@ Ask your agent to debug something in your game, you can use `example/record` as 
 
 Your llm-based editor runs a stdio mcp server that provides various tools for working with the game in your project. The editor specifies the settings and location for running the project, and the server assembles it and passes certain flags on startup, which are picked up by the decorator embedded in the game. The decorator listens for requests to run tools, executes them, and returns a response via a reverse connection to the server, after which it closes. The server supplements the response with application logs and adapts the response to the mcp context. The server remains running as long as editor wants.
 
-<img src="https://github.com/user-attachments/assets/bb257ad3-4820-466a-b07f-82a09f13e477" width="400">
-
+![](https://github.com/user-attachments/assets/42f9944d-ec20-4f35-9c72-519b700cab5f)
 
 ### Commands
 

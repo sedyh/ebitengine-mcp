@@ -1,9 +1,7 @@
 package errs
 
 import (
-	"context"
 	"errors"
-	"fmt"
 	"io"
 	"os"
 )
@@ -23,8 +21,4 @@ func Closer(dest *error, c io.Closer) {
 		return
 	}
 	*dest = errors.Join(*dest, err)
-}
-
-func Context(ctx context.Context, s string) error {
-	return fmt.Errorf("%w: %s", ctx.Err(), s)
 }

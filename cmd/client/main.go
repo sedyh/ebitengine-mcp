@@ -13,7 +13,7 @@ import (
 
 func main() {
 	server := flag.String("server", "./cmd/server", "mcp stdio server to run")
-	target := flag.String("target", "./examples/record", "ebitengine game to run")
+	target := flag.String("target", "./examples/final-record", "ebitengine game to run")
 	lvl := flag.String("log", "debug", "log level")
 	flag.Parse()
 
