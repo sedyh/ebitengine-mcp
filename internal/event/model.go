@@ -20,15 +20,31 @@ func Unmark(marked string) (id, cat string) {
 
 type Event interface {
 	Type() string
-	Error(err error)
+	SetError(err error)
 }
 
 type Failer struct {
-	Err error
+	err error
 }
 
-func (e *Failer) Error(err error) {
-	e.Err = err
+func (e *Failer) SetError(err error) {
+	e.err = err
+}
+
+func (e *Failer) Error() error {
+	return e.err
+}
+
+type Logger struct {
+	logs []string
+}
+
+func (e *Logger) Logs() []string {
+	return e.logs
+}
+
+func (e *Logger) SetLogs(logs []string) {
+	e.logs = logs
 }
 
 type RecordRequest struct {
@@ -44,6 +60,7 @@ func (r *RecordRequest) Type() string {
 
 type RecordResponse struct {
 	Failer
+	Logger
 	Images []string
 }
 

@@ -12,6 +12,7 @@ import (
 	"unicode/utf8"
 
 	"github.com/sedyh/ebitengine-mcp/internal/cli"
+	"github.com/sedyh/ebitengine-mcp/internal/mod"
 
 	"github.com/mark3labs/mcp-go/client"
 	"github.com/mark3labs/mcp-go/mcp"
@@ -42,8 +43,8 @@ func main() {
 	initReq := mcp.InitializeRequest{}
 	initReq.Params.ProtocolVersion = mcp.LATEST_PROTOCOL_VERSION
 	initReq.Params.ClientInfo = mcp.Implementation{
-		Name:    name,
-		Version: version,
+		Name:    mod.Name,
+		Version: mod.Version,
 	}
 	initRes, err := c.Initialize(ctx, initReq)
 	if err != nil {

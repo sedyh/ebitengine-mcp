@@ -103,7 +103,7 @@ func Wrap(game ebiten.Game) ebiten.Game {
 	}
 
 	var enabled bool
-	flag.BoolVar(&enabled, cli.DefaultFlag, false, "enable mcp")
+	flag.BoolVar(&enabled, cli.FlagID, false, "enable mcp")
 	flag.Parse()
 	if enabled {
 		go srv.Run(d.req, d.res)

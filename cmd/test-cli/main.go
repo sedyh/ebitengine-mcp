@@ -27,24 +27,33 @@ func main() {
 	slog.Info("run", "timeout", timeout)
 	ctx, cancel := context.WithTimeout(context.Background(), timeout)
 	defer cancel()
-	if err := cli.Run(ctx, *target, *url, *pub, *sub, *id); err != nil {
+	if log, err := cli.Run(ctx, *target, *url, *pub, *sub, *id); err != nil {
 		slog.Error("run", "err", err)
+		for _, line := range cli.Unwrap(log) {
+			slog.Info("log", "out", line)
+		}
 	}
 
 	timeout = 500 * time.Millisecond
 	slog.Info("run", "timeout", timeout)
 	ctx, cancel = context.WithTimeout(context.Background(), timeout)
 	defer cancel()
-	if err := cli.Run(ctx, *target, *url, *pub, *sub, *id); err != nil {
+	if log, err := cli.Run(ctx, *target, *url, *pub, *sub, *id); err != nil {
 		slog.Error("run", "err", err)
+		for _, line := range cli.Unwrap(log) {
+			slog.Info("log", "out", line)
+		}
 	}
 
 	timeout = 1500 * time.Millisecond
 	slog.Info("run", "timeout", timeout)
 	ctx, cancel = context.WithTimeout(context.Background(), timeout)
 	defer cancel()
-	if err := cli.Run(ctx, *target, *url, *pub, *sub, *id); err != nil {
+	if log, err := cli.Run(ctx, *target, *url, *pub, *sub, *id); err != nil {
 		slog.Error("run", "err", err)
+		for _, line := range cli.Unwrap(log) {
+			slog.Info("log", "out", line)
+		}
 	}
 
 	slog.Info("cli stopped")

@@ -19,10 +19,10 @@ const (
 	BinName = "emcp-bin"
 )
 
-func Run(ctx context.Context, target, url, pub, sub, id string) (e error) {
+func Run(ctx context.Context, target, url, pub, sub, id string) (log string, e error) {
 	info, err := os.Stat(target)
 	if err != nil {
-		return fmt.Errorf("stat %s: %w", target, err)
+		return "", fmt.Errorf("stat %s: %w", target, err)
 	}
 
 	pkg := target
@@ -32,7 +32,7 @@ func Run(ctx context.Context, target, url, pub, sub, id string) (e error) {
 
 	tmp, err := os.CreateTemp("", fmt.Sprintf("%s-%s", BinName, id))
 	if err != nil {
-		return fmt.Errorf("create temp file: %w", err)
+		return "", fmt.Errorf("create temp file: %w", err)
 	}
 
 	out := tmp.Name()
@@ -41,66 +41,22 @@ func Run(ctx context.Context, target, url, pub, sub, id string) (e error) {
 
 	bin, err := Compiler()
 	if err != nil {
-		return fmt.Errorf("find compiler: %w", err)
+		return "", fmt.Errorf("find compiler: %w", err)
 	}
 
-	if err := Build(ctx, pkg, bin, out); err != nil {
-		return fmt.Errorf("build: %w", err)
+	if log, err := Build(ctx, pkg, bin, out); err != nil {
+		return log, fmt.Errorf("build: %w", err)
+	}
+
+	if log, err := Launch(ctx, out, url, pub, sub, id); err != nil {
+		return log, fmt.Errorf("launch: %w", err)
 	}
 
 	if _, err := os.Stat(out); os.IsNotExist(err) {
-		return fmt.Errorf("output file not found: %w", err)
+		return "", fmt.Errorf("output file not found: %w", err)
 	}
 
-	run := exec.CommandContext(
-		ctx, out,
-		"-"+FlagURL, url,
-		"-"+FlagPub, pub,
-		"-"+FlagSub, sub,
-		"-"+FlagID, id,
-	)
-	run.Stdin = os.Stdin
-	run.Stdout = os.Stdout
-	run.Stderr = os.Stderr
-	run.Env = os.Environ()
-
-	if err := run.Run(); err != nil {
-		if e := ctx.Err(); e != nil {
-			err = fmt.Errorf("run: %w: %w", e, err)
-		}
-		return err
-	}
-
-	return nil
-}
-
-func Build(ctx context.Context, dir, bin, out string) (e error) {
-	old, err := os.Getwd()
-	if err != nil {
-		return fmt.Errorf("get working dir: %w", err)
-	}
-	if err := os.Chdir(dir); err != nil {
-		return err
-	}
-	defer errs.Closer(&e, Restore(old))
-
-	build := exec.CommandContext(ctx, bin, "build", "-o", out, ".")
-	build.Stdout = os.Stdout
-	build.Stderr = os.Stderr
-	if err := build.Run(); err != nil {
-		if e := ctx.Err(); e != nil {
-			err = fmt.Errorf("%w: %w", e, err)
-		}
-		return err
-	}
-
-	return nil
-}
-
-func Restore(dir string) io.Closer {
-	return errs.CloserFunc(func() error {
-		return os.Chdir(dir)
-	})
+	return log, nil
 }
 
 func Compiler() (string, error) {
@@ -108,9 +64,57 @@ func Compiler() (string, error) {
 	if goroot == "" {
 		return "", fmt.Errorf("env variable GOROOT is not set")
 	}
+
 	gobin := filepath.Join(goroot, "bin", "go")
 	if _, err := os.Stat(gobin); os.IsNotExist(err) {
 		return "", fmt.Errorf("go binary not found at %q", gobin)
 	}
+
 	return gobin, nil
+}
+
+func Build(ctx context.Context, dir, bin, out string) (log string, e error) {
+	old, err := os.Getwd()
+	if err != nil {
+		return "", fmt.Errorf("get working dir: %w", err)
+	}
+	if err := os.Chdir(dir); err != nil {
+		return "", err
+	}
+	defer errs.Closer(&e, Restore(old))
+
+	build := exec.CommandContext(
+		ctx, bin,
+		"build", "-o",
+		out, ".",
+	)
+	data, err := build.CombinedOutput()
+
+	return Trim(string(data)), WrapWithContext(err, ctx)
+}
+
+func Launch(ctx context.Context, out, url, pub, sub, id string) (log string, e error) {
+	run := exec.CommandContext(
+		ctx, out,
+		"-"+FlagURL, url,
+		"-"+FlagPub, pub,
+		"-"+FlagSub, sub,
+		"-"+FlagID, id,
+	)
+	data, err := run.CombinedOutput()
+
+	return Trim(string(data)), WrapWithContext(err, ctx)
+}
+
+func WrapWithContext(err error, ctx context.Context) error {
+	if e := ctx.Err(); e != nil {
+		return fmt.Errorf("%w: %w", e, err)
+	}
+	return err
+}
+
+func Restore(dir string) io.Closer {
+	return errs.CloserFunc(func() error {
+		return os.Chdir(dir)
+	})
 }

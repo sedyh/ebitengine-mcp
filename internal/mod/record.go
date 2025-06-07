@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"log/slog"
 	"time"
 
 	"github.com/lithammer/shortuuid"
@@ -71,6 +72,8 @@ func (r *RecordTool) Handle(ctx context.Context, request mcp.CallToolRequest) (*
 		return nil, errors.New("delay must be a number")
 	}
 
+	slog.Info("record", "target", target, "frames", frames, "delay", delay)
+
 	ctx, cancel := context.WithTimeout(ctx, 30*time.Second)
 	defer cancel()
 
@@ -79,8 +82,8 @@ func (r *RecordTool) Handle(ctx context.Context, request mcp.CallToolRequest) (*
 		Frames: int(frames),
 		Delay:  time.Duration(delay) * time.Millisecond,
 	})
-	if res.Err != nil {
-		return mcp.NewToolResultErrorFromErr("fail to record", res.Err), nil
+	if res.Error() != nil {
+		return mcp.NewToolResultErrorFromErr("fail to record", res.Error()), nil
 	}
 
 	call := &mcp.CallToolResult{}
@@ -88,33 +91,65 @@ func (r *RecordTool) Handle(ctx context.Context, request mcp.CallToolRequest) (*
 		content := mcp.NewImageContent(png, "image/png")
 		call.Content = append(call.Content, content)
 	}
+	for _, log := range res.Logs() {
+		content := mcp.NewTextContent(log)
+		call.Content = append(call.Content, content)
+	}
 
 	return call, nil
 }
 
-func (r *RecordTool) Call(ctx context.Context, req *event.RecordRequest) (res *event.RecordResponse) {
+func (r *RecordTool) Call(ctx context.Context, req *event.RecordRequest) *event.RecordResponse {
 	id := shortuuid.New()
-	go cli.Run(ctx, req.Target, r.url, r.pub, r.sub, id)
+	cmd := cli.Go(ctx, cli.Options{
+		Target: req.Target,
+		URL:    r.url,
+		Pub:    r.pub,
+		Sub:    r.sub,
+		ID:     id,
+	})
 
 	responser, err := event.NewClient[*event.RecordResponse](r.url, r.pub, r.sub, id)
 	if err != nil {
-		res.Error(fmt.Errorf("create client: %w", err))
+		res := &event.RecordResponse{}
+		res.SetError(fmt.Errorf("create client: %w", err))
 		return res
 	}
 
-	responses := responser.Start(time.Now())
+	events := responser.Start(time.Now())
 	defer responser.Stop()
 
 	if err := event.Publish(r.poll, id, req); err != nil {
-		res.Error(fmt.Errorf("publish event: %w", err))
+		res := &event.RecordResponse{}
+		res.SetError(fmt.Errorf("publish event: %w", err))
 		return res
 	}
 
 	select {
-	case res = <-responses:
+	case out := <-cmd:
+		slog.Info("received out")
+		if out.Error != nil {
+			res := &event.RecordResponse{}
+			res.SetError(fmt.Errorf("%w: %s", out.Error, cli.Wrap(out.Logs)))
+			return res
+		}
+		select {
+		case e := <-events:
+			slog.Info("received out+event")
+			res := &event.RecordResponse{}
+			res.Images = e.Images
+			res.SetLogs(out.Logs)
+			return res
+		case <-ctx.Done():
+			slog.Info("received out+deadline")
+			res := &event.RecordResponse{}
+			res.SetLogs(out.Logs)
+			res.SetError(fmt.Errorf("%w: %w", ctx.Err(), out.Error))
+			return res
+		}
 	case <-ctx.Done():
-		res.Error(ctx.Err())
+		res := &event.RecordResponse{}
+		res.SetError(ctx.Err())
+		return res
 	}
-
-	return res
 }

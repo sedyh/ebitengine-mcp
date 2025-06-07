@@ -6,6 +6,10 @@ import (
 	"unicode/utf8"
 )
 
+func Short(str string) string {
+	return Trunc(Hash([]byte(str)), 10)
+}
+
 func Trunc(str string, length int) string {
 	if length <= 0 {
 		return ""

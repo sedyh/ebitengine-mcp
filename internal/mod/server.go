@@ -11,8 +11,8 @@ import (
 )
 
 const (
-	name    = "ebitengine-mcp"
-	version = "1.0.0"
+	Name    = "ebitengine-mcp"
+	Version = "1.0.0"
 )
 
 type Server struct {
@@ -20,7 +20,7 @@ type Server struct {
 }
 
 func NewServer(poll *event.Server, url, pub, sub string) *Server {
-	mod := server.NewMCPServer(name, version)
+	mod := server.NewMCPServer(Name, Version)
 	mod.AddTools(NewRecordTool(poll, url, pub, sub))
 	return &Server{mod: mod}
 }

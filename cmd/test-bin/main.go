@@ -21,6 +21,6 @@ func main() {
 
 	slog.Info("bin started", "url", *url, "pub", *pub, "sub", *sub, "id", *id)
 	<-time.After(1 * time.Second)
-	os.Exit(1)
 	slog.Info("bin stopped")
+	os.Exit(1)
 }

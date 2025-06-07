@@ -59,14 +59,14 @@ func main() {
 	case e := <-requests:
 		req = e
 	case <-ctx.Done():
-		req.Error(ctx.Err())
+		req.SetError(ctx.Err())
 	}
-	if errors.Is(req.Err, context.Canceled) {
+	if errors.Is(req.Error(), context.Canceled) {
 		slog.Info("stopped")
 		return
 	}
-	if req.Err != nil {
-		slog.Error("requester", "err", req.Err)
+	if req.Error() != nil {
+		slog.Error("requester", "err", req.Error())
 		os.Exit(1)
 	}
 	slog.Info("request", "target", req.Target, "frames", req.Frames, "delay", req.Delay)

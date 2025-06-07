@@ -77,10 +77,10 @@ func main() {
 	case e := <-responses:
 		res = e
 	case <-ctx.Done():
-		res.Error(ctx.Err())
+		res.SetError(ctx.Err())
 	}
-	if res.Err != nil && !errors.Is(res.Err, context.Canceled) {
-		slog.Error("responser", "err", res.Err)
+	if res.Error() != nil && !errors.Is(res.Error(), context.Canceled) {
+		slog.Error("responser", "err", res.Error())
 	}
 	for _, img := range res.Images {
 		slog.Info("received", "image", out.Trunc(out.Hash([]byte(img)), 10))

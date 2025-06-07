@@ -35,12 +35,12 @@ func (c *Client[T]) Start(since time.Time) <-chan T {
 		for event := range c.client.Start(since) {
 			data, err := json.Marshal(event.Data)
 			if err != nil {
-				v.Error(fmt.Errorf("marshal json to bytes: %w", err))
+				v.SetError(fmt.Errorf("marshal json to bytes: %w", err))
 				ch <- v
 				continue
 			}
 			if err := json.Unmarshal(data, &v); err != nil {
-				v.Error(fmt.Errorf("unmarshal bytes to type: %w", err))
+				v.SetError(fmt.Errorf("unmarshal bytes to type: %w", err))
 				ch <- v
 				continue
 			}

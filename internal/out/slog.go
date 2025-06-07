@@ -15,15 +15,21 @@ import (
 )
 
 func Setup(level slog.Level) {
-	slog.SetDefault(slog.New(
-		console.NewHandler(
-			Prefixed(os.Stderr, "\r"),
-			&console.HandlerOptions{
-				Level:      level,
-				TimeFormat: time.TimeOnly,
-			},
-		),
-	))
+	var handler slog.Handler
+
+	handler = console.NewHandler(
+		Prefixed(os.Stderr, "\r"),
+		&console.HandlerOptions{
+			Level:      level,
+			TimeFormat: time.TimeOnly,
+		},
+	)
+
+	if debug {
+		handler = NewDebugHandler(handler)
+	}
+
+	slog.SetDefault(slog.New(handler))
 }
 
 const DefaultLevel = slog.LevelDebug
