@@ -19,7 +19,7 @@ const (
 	BinName = "emcp-bin"
 )
 
-func Run(ctx context.Context, target, url, pub, sub, id string) (log string, e error) {
+func Run(ctx context.Context, target, url, pub, sub, id string) (l string, e error) {
 	info, err := os.Stat(target)
 	if err != nil {
 		return "", fmt.Errorf("stat %s: %w", target, err)
@@ -44,11 +44,13 @@ func Run(ctx context.Context, target, url, pub, sub, id string) (log string, e e
 		return "", fmt.Errorf("find compiler: %w", err)
 	}
 
-	if log, err := Build(ctx, pkg, bin, out); err != nil {
+	log, err := Build(ctx, pkg, bin, out)
+	if err != nil {
 		return log, fmt.Errorf("build: %w", err)
 	}
 
-	if log, err := Launch(ctx, out, url, pub, sub, id); err != nil {
+	log, err = Launch(ctx, out, url, pub, sub, id)
+	if err != nil {
 		return log, fmt.Errorf("launch: %w", err)
 	}
 

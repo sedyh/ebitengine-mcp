@@ -26,7 +26,16 @@ func Go(ctx context.Context, opts Options) (res chan Result) {
 			Logs:  Unwrap(logs),
 			Error: err,
 		}
-		slog.Info("executed", "logs", len(logs), "err", err)
+		slog.Debug(
+			"executed",
+			"target", opts.Target,
+			"url", opts.URL,
+			"pub", opts.Pub,
+			"sub", opts.Sub,
+			"id", opts.ID,
+			"logs", len(logs),
+			"err", err,
+		)
 	}()
 	return res
 }

@@ -33,8 +33,6 @@ func main() {
 	ctx, cancel := signal.NotifyContext(context.Background(), os.Interrupt)
 	defer cancel()
 
-	// Library communication
-
 	poll, err := event.NewServer(*url, *pub, *sub)
 	if err != nil {
 		slog.Error("requester", "err", err)

@@ -6,18 +6,18 @@ import (
 )
 
 var (
-	regTab     = regexp.MustCompile(`\t+`)
 	regNewline = regexp.MustCompile(`\n+`)
+	regTab     = regexp.MustCompile(`\t+`)
 	regSpace   = regexp.MustCompile(` +`)
 	regColor   = regexp.MustCompile("\x1b\\[[0-9;]*[mG]")
 )
 
-const sep = ";"
+const sep = ", "
 
 func Trim(log string) string {
 	result := strings.ReplaceAll(log, "\r", "")
-	result = regTab.ReplaceAllString(result, "\t")
 	result = regNewline.ReplaceAllString(result, "\n")
+	result = regTab.ReplaceAllString(result, " ")
 	result = regSpace.ReplaceAllString(result, " ")
 	result = regColor.ReplaceAllString(result, "")
 	result = strings.ReplaceAll(result, sep, "")
@@ -26,6 +26,7 @@ func Trim(log string) string {
 	res := make([]string, 0, len(lines))
 	for _, line := range lines {
 		t := strings.Trim(line, "\n")
+		t = strings.Trim(t, " ")
 		if t == "" {
 			continue
 		}

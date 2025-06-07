@@ -9,7 +9,7 @@ import (
 )
 
 const (
-	debug = true
+	debug = false
 	path  = "debug.txt"
 )
 
@@ -18,7 +18,7 @@ type deb struct {
 }
 
 func NewDebugHandler(handler slog.Handler) *deb {
-	rem()
+	Rem()
 	return &deb{handler: handler}
 }
 
@@ -46,7 +46,7 @@ func (h *deb) Handle(ctx context.Context, record slog.Record) error {
 		return true
 	})
 
-	add(buf.String())
+	Add(buf.String())
 
 	return nil
 }
@@ -59,13 +59,13 @@ func (h *deb) WithGroup(name string) slog.Handler {
 	return &deb{handler: h.handler.WithGroup(name)}
 }
 
-func add(log string) string {
+func Add(log string) string {
 	f, _ := os.OpenFile(path, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
 	defer f.Close()
 	_, _ = f.WriteString(log + "\n")
 	return path
 }
 
-func rem() {
+func Rem() {
 	_ = os.Remove(path)
 }

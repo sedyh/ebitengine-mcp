@@ -15,7 +15,7 @@ import (
 
 func main() {
 	const (
-		pollURL  = ":8080"
+		pollURL  = ":0"
 		pollPub  = "/pub"
 		pollSub  = "/sub"
 		logLevel = "debug"
@@ -43,7 +43,7 @@ func main() {
 		}
 	}()
 
-	server := mod.NewServer(poll, *url, *pub, *sub)
+	server := mod.NewServer(poll, poll.Host(), *pub, *sub)
 	go func() {
 		if err := server.Start(ctx); err != nil {
 			slog.Error("server", "err", err)

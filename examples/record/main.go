@@ -11,6 +11,7 @@ import (
 )
 
 func main() {
+	log.SetFlags(log.Ltime)
 	ebiten.SetWindowSize(800, 600)
 	if err := ebiten.RunGame(mcp.Wrap(NewGame())); err != nil {
 		log.Fatal(err)
@@ -30,6 +31,7 @@ func NewGame() *Game {
 }
 
 func (g *Game) Update() error {
+	log.Printf("fps: %.f\n", ebiten.ActualFPS())
 	g.count += 0.1
 	return nil
 }

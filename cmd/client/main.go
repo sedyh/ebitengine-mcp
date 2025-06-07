@@ -2,116 +2,62 @@ package main
 
 import (
 	"context"
-	"crypto/sha256"
-	"encoding/hex"
 	"flag"
-	"fmt"
-	"log"
+	"log/slog"
 	"os"
-	"time"
-	"unicode/utf8"
+	"os/signal"
 
-	"github.com/sedyh/ebitengine-mcp/internal/cli"
 	"github.com/sedyh/ebitengine-mcp/internal/mod"
-
-	"github.com/mark3labs/mcp-go/client"
-	"github.com/mark3labs/mcp-go/mcp"
+	"github.com/sedyh/ebitengine-mcp/internal/out"
 )
 
 func main() {
-	var dir string
-	flag.StringVar(&dir, "client", "./examples/record", "golang client to run")
+	server := flag.String("server", "./cmd/server", "mcp stdio server to run")
+	target := flag.String("target", "./examples/record", "ebitengine game to run")
+	lvl := flag.String("log", "debug", "log level")
 	flag.Parse()
 
-	gobin, err := cli.Compiler()
-	if err != nil {
-		log.Fatal(err)
-	}
-	if err := os.Chdir(dir); err != nil {
-		log.Fatal(err)
-	}
-	c, err := client.NewStdioMCPClient(gobin, nil, "run", ".", "-"+cli.DefaultFlag)
-	if err != nil {
-		log.Fatal("failed to create client: ", err)
-	}
-	defer c.Close()
+	out.Setup(out.Level(*lvl))
 
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	ctx, cancel := signal.NotifyContext(context.Background(), os.Interrupt)
 	defer cancel()
 
-	log.Println("connecting:", fmt.Sprintf("%s %s %s", gobin, "run", dir))
-	initReq := mcp.InitializeRequest{}
-	initReq.Params.ProtocolVersion = mcp.LATEST_PROTOCOL_VERSION
-	initReq.Params.ClientInfo = mcp.Implementation{
-		Name:    mod.Name,
-		Version: mod.Version,
-	}
-	initRes, err := c.Initialize(ctx, initReq)
+	client, err := mod.NewClient(*server)
 	if err != nil {
-		log.Fatalf("failed to initialize: %v", err)
+		slog.Error("client", "err", err)
+		os.Exit(1)
 	}
-	log.Printf(
-		"connected: %s-%s\n",
-		initRes.ServerInfo.Name,
-		initRes.ServerInfo.Version,
-	)
+	defer client.Close()
 
-	log.Println("listing tools")
-	toolsReq := mcp.ListToolsRequest{}
-	toolsRes, err := c.ListTools(ctx, toolsReq)
+	if err := client.Init(ctx); err != nil {
+		slog.Error("client", "err", err)
+		os.Exit(1)
+	}
+
+	slog.Info("connected")
+
+	tools, err := client.Tools(ctx)
 	if err != nil {
-		log.Fatalf("failed to get tools list: %v", err)
+		slog.Error("client", "err", err)
+		os.Exit(1)
 	}
-	log.Printf("found %d tools:\n", len(toolsRes.Tools))
-	for _, tool := range toolsRes.Tools {
-		log.Printf("  - %s: %s\n", tool.Name, tool.Description)
+	for _, tool := range tools {
+		slog.Info("found tool", "name", tool.Name, "description", tool.Description)
 	}
 
-	found := false
-	for _, tool := range toolsRes.Tools {
-		if tool.Name == "record" {
-			found = true
-			break
-		}
+	hashes, logs, err := client.Record(ctx, *target, 3, 100)
+	if err != nil {
+		slog.Error("client", "err", err)
+		os.Exit(1)
 	}
-	if found {
-		log.Println("calling record tool")
-		callRecordReq := mcp.CallToolRequest{}
-		callRecordReq.Params.Name = "record"
-		callRecordReq.Params.Arguments = map[string]any{
-			"frames": 3,
-			"delay":  100,
-		}
-		recordResult, err := c.CallTool(ctx, callRecordReq)
-		if err != nil {
-			log.Printf("failed to call record tool: %v", err)
-		} else {
-			for _, content := range recordResult.Content {
-				if img, ok := mcp.AsImageContent(content); ok {
-					log.Printf("record: %s\n", Short(img.Data))
-				}
-			}
-		}
-	} else {
-		log.Println("record tool not found on server")
+	for _, hash := range hashes {
+		slog.Info("image", "hash", hash)
 	}
-}
+	for _, log := range logs {
+		slog.Info("log", "msg", log)
+	}
 
-func Short(str string) string {
-	return Trunc(Hash([]byte(str)), 10)
-}
+	<-ctx.Done()
 
-func Trunc(str string, length int) string {
-	if length <= 0 {
-		return ""
-	}
-	if utf8.RuneCountInString(str) < length {
-		return str
-	}
-	return string([]rune(str)[:length])
-}
-
-func Hash(data []byte) string {
-	h := sha256.Sum256(data)
-	return hex.EncodeToString(h[:])
+	slog.Info("stopped", "graceful", !out.Done(ctx))
 }

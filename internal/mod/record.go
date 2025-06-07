@@ -43,7 +43,7 @@ func (r *RecordTool) Tool() mcp.Tool {
 		mcp.WithString(
 			"target",
 			mcp.Required(),
-			mcp.Description("any type of path to main go package of the app, like: ./cmd/app, ../example/main.go, app/client"),
+			mcp.Description("absolute path to main go package of the app, like: /home/user/go/cmd/app, /home/user/go/example/main.go, /home/user/go/app/client"),
 		),
 		mcp.WithNumber(
 			"frames",
@@ -101,6 +101,7 @@ func (r *RecordTool) Handle(ctx context.Context, request mcp.CallToolRequest) (*
 
 func (r *RecordTool) Call(ctx context.Context, req *event.RecordRequest) *event.RecordResponse {
 	id := shortuuid.New()
+
 	cmd := cli.Go(ctx, cli.Options{
 		Target: req.Target,
 		URL:    r.url,
@@ -127,27 +128,28 @@ func (r *RecordTool) Call(ctx context.Context, req *event.RecordRequest) *event.
 
 	select {
 	case out := <-cmd:
-		slog.Info("received out")
 		if out.Error != nil {
+			slog.Debug("execution failed, call failed")
 			res := &event.RecordResponse{}
 			res.SetError(fmt.Errorf("%w: %s", out.Error, cli.Wrap(out.Logs)))
 			return res
 		}
 		select {
 		case e := <-events:
-			slog.Info("received out+event")
+			slog.Debug("execution success, call success")
 			res := &event.RecordResponse{}
 			res.Images = e.Images
 			res.SetLogs(out.Logs)
 			return res
 		case <-ctx.Done():
-			slog.Info("received out+deadline")
+			slog.Debug("execution success, call deadline")
 			res := &event.RecordResponse{}
 			res.SetLogs(out.Logs)
 			res.SetError(fmt.Errorf("%w: %w", ctx.Err(), out.Error))
 			return res
 		}
 	case <-ctx.Done():
+		slog.Debug("execution deadline, call failed")
 		res := &event.RecordResponse{}
 		res.SetError(ctx.Err())
 		return res

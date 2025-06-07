@@ -3,19 +3,14 @@ package mcp
 import (
 	"bytes"
 	"encoding/base64"
-	"flag"
 	"image/png"
 	"time"
 
-	"github.com/sedyh/ebitengine-mcp/internal/cli"
-	"github.com/sedyh/ebitengine-mcp/internal/srv"
-
 	"github.com/hajimehoshi/ebiten/v2"
+	"github.com/sedyh/ebitengine-mcp/internal/event"
 )
 
 const (
-	name    = "ebitengine-mcp-recorder-server"
-	version = "1.0.0"
 	timeout = 500 * time.Millisecond
 	alive   = 5 * time.Second
 )
@@ -30,36 +25,27 @@ const (
 
 type decorator struct {
 	game   ebiten.Game
-	req    srv.Events
-	res    srv.Events
+	server *Server
 	state  state
 	next   *time.Ticker
-	start  time.Time
 	frames int
 	pngs   []string
 	err    error
 }
 
 func (g *decorator) Update() error {
-	// if time.Since(g.start) > alive && g.state == start {
-	// 	return ebiten.Termination
-	// }
 	if g.state == exit {
-		g.res[srv.Record] <- srv.RecordRes{
-			Images: g.pngs,
-			Err:    g.err,
-		}
+		res := &event.RecordResponse{Images: g.pngs}
+		res.SetError(g.err)
+		g.server.RecordResponce(res)
 		<-time.After(timeout)
 		return ebiten.Termination
 	}
 	select {
-	case e := <-g.req[srv.Record]:
-		switch e := e.(type) {
-		case srv.RecordReq:
-			g.state = record
-			g.frames = e.Frames
-			g.next = time.NewTicker(e.Delay)
-		}
+	case req := <-g.server.RecordRequests():
+		g.state = record
+		g.frames = req.Frames
+		g.next = time.NewTicker(req.Delay)
 	default:
 	}
 
@@ -95,19 +81,14 @@ func (g *decorator) Layout(w, h int) (int, int) {
 }
 
 func Wrap(game ebiten.Game) ebiten.Game {
-	d := &decorator{
-		game:  game,
-		req:   srv.NewEvents(srv.Record),
-		res:   srv.NewEvents(srv.Record),
-		start: time.Now(),
+	server, err := NewServer()
+	if err != nil {
+		return NewInstantFailGame(err)
 	}
+	game = NewPostCloseGame(game, server.Close)
 
-	var enabled bool
-	flag.BoolVar(&enabled, cli.FlagID, false, "enable mcp")
-	flag.Parse()
-	if enabled {
-		go srv.Run(d.req, d.res)
+	return &decorator{
+		game:   game,
+		server: server,
 	}
-
-	return d
 }
