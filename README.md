@@ -8,13 +8,12 @@ go get github.com/sedyh/ebitengine-mcp@v1.1.0
 
 Wrap your game to record its state.
 
-`examples/record/main.go`
+`examples/plain-record/main.go`
 ```go
 import "github.com/sedyh/ebitengine-mcp/mcp"
 
 func main() {
-  game := mcp.Wrap(NewGame())
-  if err := ebiten.RunGame(game); err != nil {
+  if err := ebiten.RunGame(mcp.Wrap(NewGame())); err != nil {
     log.Fatal(err)
   }
 }
