@@ -99,7 +99,7 @@ Ask your agent to debug something in your game, you can use `example/record` as 
 
 Your llm-based editor runs a stdio mcp server that provides various tools for working with the game in your project. The editor specifies the settings and location for running the project, and the server assembles it and passes certain flags on startup, which are picked up by the decorator embedded in the game. The decorator listens for requests to run tools, executes them, and returns a response via a reverse connection to the server, after which it closes. The server supplements the response with application logs and adapts the response to the mcp context. The server remains running as long as editor wants.
 
-![](https://github.com/user-attachments/assets/42f9944d-ec20-4f35-9c72-519b700cab5f)
+![](https://github.com/user-attachments/assets/df2e9025-7927-4c1d-b3e8-40a434ddffbd)
 
 ### Commands
 
