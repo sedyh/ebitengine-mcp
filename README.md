@@ -1,11 +1,22 @@
 ### MCP Server For Ebitengine
 
-Just wrap your game before running it.
+Download this package.
+
+```bash
+go get github.com/sedyh/ebitengine-mcp@v1.1.0
+```
+
+Wrap your game to record its state.
 
 `examples/record/main.go`
 ```go
-if err := ebiten.RunGame(mcp.Wrap(NewGame())); err != nil {
-	log.Fatal(err)
+import "github.com/sedyh/ebitengine-mcp/mcp"
+
+func main() {
+  game := mcp.Wrap(NewGame())
+  if err := ebiten.RunGame(game); err != nil {
+    log.Fatal(err)
+  }
 }
 ```
 
@@ -16,7 +27,7 @@ And add this config to your mcp servers.
 {
   "mcpServers": {
     "ebitengine-mcp": {
-      "command": "go run github.com/sedyh/ebitengine-mcp/cmd/server@v1.0.0"
+      "command": "go run github.com/sedyh/ebitengine-mcp/cmd/server@v1.1.0"
     }
   }
 }
@@ -35,7 +46,7 @@ And add this config to your mcp servers.
         "ebitengine-mcp": {
           "type": "stdio",
           "command": "go",
-          "args": ["run", "github.com/sedyh/ebitengine-mcp/cmd/server@latest"]
+          "args": ["run", "github.com/sedyh/ebitengine-mcp/cmd/server@v1.1.0"]
         }
       }
     }
@@ -51,7 +62,7 @@ And add this config to your mcp servers.
       "mcpServers": {
         "ebitengine-mcp": {
           "command": "go",
-          "args": ["run", "github.com/sedyh/ebitengine-mcp/cmd/server@latest"]
+          "args": ["run", "github.com/sedyh/ebitengine-mcp/cmd/server@v1.1.0"]
         }
       }
     }
